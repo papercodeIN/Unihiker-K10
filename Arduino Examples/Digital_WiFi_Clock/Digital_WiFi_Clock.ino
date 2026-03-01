@@ -6,8 +6,8 @@
 UNIHIKER_K10 k10;
 TFT_eSPI tft = TFT_eSPI();
 
-const char* ssid = "*****";
-const char* password = "*****";
+const char* ssid = "Capgemini_4G";
+const char* password = "MN704116";
 
 const char* ntpServer = "pool.ntp.org";
 long gmtOffset_sec = 19800;   // India
@@ -40,33 +40,88 @@ void setup() {
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 }
 
+int prev_minute = -1;
+
 void loop() {
+
   struct tm timeinfo;
 
   if (!getLocalTime(&timeinfo)) {
     return;
   }
 
-  if (timeinfo.tm_sec != prev_sec) {
-    prev_sec = timeinfo.tm_sec;
+  if (timeinfo.tm_min != prev_minute) {
+
+    prev_minute = timeinfo.tm_min;
 
     tft.fillScreen(TFT_BLACK);
 
-    tft.setTextColor(TFT_GREEN);
-    tft.setTextSize(5);
-    tft.setCursor(40, 70);
+    int hour24 = timeinfo.tm_hour;
+    int hour12;
+    String ampm;
 
-    char timeStr[9];
-    strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeinfo);
+    if (hour24 == 0) {
+      hour12 = 12;
+      ampm = "AM";
+    } else if (hour24 < 12) {
+      hour12 = hour24;
+      ampm = "AM";
+    } else if (hour24 == 12) {
+      hour12 = 12;
+      ampm = "PM";
+    } else {
+      hour12 = hour24 - 12;
+      ampm = "PM";
+    }
+
+    // ===== TIME STRING =====
+    char timeStr[6];
+    sprintf(timeStr, "%02d:%02d", hour12, timeinfo.tm_min);
+
+    // Calculate widths (default font approx 6px wide per char)
+    int timeWidth = strlen(timeStr) * 6 * 6;   // textSize 6
+    int ampmWidth = ampm.length() * 6 * 3;     // textSize 3
+    int gap = 10;
+
+    int totalWidth = timeWidth + gap + ampmWidth;
+    int startX = (320 - totalWidth) / 2;
+
+    // ===== DRAW TIME =====
+    tft.setTextSize(6);
+    tft.setTextColor(TFT_WHITE);
+    tft.setCursor(startX, 40);
     tft.print(timeStr);
 
-    tft.setTextSize(2);
-    tft.setCursor(90, 150);
+    // ===== DRAW AM/PM (beside time) =====
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_WHITE);
+    tft.setCursor(startX + timeWidth + gap, 60);
+    tft.print(ampm);
 
-    char dateStr[11];
-    strftime(dateStr, sizeof(dateStr), "%d-%m-%Y", &timeinfo);
+    // ===== DAY =====
+    char dayStr[12];
+    strftime(dayStr, sizeof(dayStr), "%A", &timeinfo);
+
+    int dayWidth = strlen(dayStr) * 6 * 3;
+    int dayX = (320 - dayWidth) / 2;
+
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_GREEN);
+    tft.setCursor(dayX, 120);
+    tft.print(dayStr);
+
+    // ===== DATE (DD-MMM-YYYY) =====
+    char dateStr[15];
+    strftime(dateStr, sizeof(dateStr), "%d-%b-%Y", &timeinfo);
+
+    int dateWidth = strlen(dateStr) * 6 * 3;
+    int dateX = (320 - dateWidth) / 2;
+
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_GREEN);
+    tft.setCursor(dateX, 155);
     tft.print(dateStr);
   }
 
-  delay(200);
+  delay(500);
 }
